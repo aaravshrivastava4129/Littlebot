@@ -4,3 +4,6 @@ It is a little two wheeled self-balancing robot. It can talk and see and express
 
 ## Team member roles
 
+## Software build and which tools we are using
+
+## The hardware build and its details
