@@ -1,4 +1,11 @@
 from app.conversation import Conversation
+from speech.stt_provider import SpeechToTextProvider
+from audio.microphone import Microphone
+
+mic = Microphone(sample_rate=16000, channels=1)
+
+stt_provider = SpeechToTextProvider()
+audio_file_path = "recording.wav"
 
 def main():
     bot = Conversation()
@@ -7,7 +14,15 @@ def main():
     while True:
 
         try:
-            user_message = input("\nYou: ")
+            input("Press ENTER to start recording...")
+            mic.start_recording()
+            input()
+            mic.stop_recording("recording.wav")
+            
+            transcription_result = stt_provider.transcribe(audio_file_path)
+            user_message = transcription_result["transcript"]
+
+            print(f"\nYou: {user_message}\n")
 
             if user_message.lower() == "exit":
                 print("\nLittlebot: Goodbye!\n")

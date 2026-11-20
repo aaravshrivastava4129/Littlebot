@@ -17,8 +17,8 @@ if not CLOUDFLARE_API_TOKEN:
 
 CLOUDFLARE_BASE_URL = (f"https://api.cloudflare.com/client/v4/accounts/"f"{CLOUDFLARE_ACCOUNT_ID}/ai/v1")
 
-LLAMA_MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8"
+LLAMA_MODEL = "@cf/google/gemma-4-26b-a4b-it"
 
 MAX_HISTORY_MESSAGES = 20
 TEMPERATURE = 0.7
-MAX_RESPONSE_TOKENS = 512
+MAX_RESPONSE_TOKENS = 1024
