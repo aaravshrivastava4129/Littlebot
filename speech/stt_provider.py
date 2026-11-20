@@ -1,92 +1,65 @@
-import base64
-import requests
-
+import sherpa_onnx
+import numpy as np
 from pathlib import Path
-
-from config.settings import (
-    CLOUDFLARE_ACCOUNT_ID,
-    CLOUDFLARE_API_TOKEN,
-)
 
 
 class SpeechToTextProvider:
 
     def __init__(self):
-
-        if not CLOUDFLARE_ACCOUNT_ID or not CLOUDFLARE_API_TOKEN:
-            raise ValueError("Cloudflare credentials are missing.")
-
-        self.model = "@cf/openai/whisper-large-v3-turbo"
-
-        self.api_url = (
-            "https://api.cloudflare.com/client/v4/accounts/"
-            f"{CLOUDFLARE_ACCOUNT_ID}/ai/run/{self.model}"
+        model_dir = (
+            Path(__file__).resolve().parent.parent
+            / "models"
+            / "parakeet-tdt-0.6b-v3-int8"
         )
 
-        self.headers = {
-            "Authorization": f"Bearer {CLOUDFLARE_API_TOKEN}",
-            "Content-Type": "application/json",
-        }
+        encoder = model_dir / "encoder.int8.onnx"
+        decoder = model_dir / "decoder.int8.onnx"
+        joiner = model_dir / "joiner.int8.onnx"
+        tokens = model_dir / "tokens.txt"
 
-    def transcribe(self, audio_file: str) -> dict:
+        required_files = [encoder, decoder, joiner, tokens]
 
-        audio_path = Path(audio_file)
+        for file in required_files:
+            if not file.is_file():
+                raise FileNotFoundError(
+                    f"Required model file not found: {file}"
+                )
 
-        if not audio_path.exists():
-            raise FileNotFoundError(
-                f"Audio file not found: {audio_path}"
-            )
-
-        audio_bytes = audio_path.read_bytes()
-
-        if not audio_bytes:
-            raise ValueError("Audio file is empty.")
-
-        audio_base64 = base64.b64encode(
-            audio_bytes
-        ).decode("utf-8")
-
-        payload = {
-            "audio": audio_base64,
-            "task": "transcribe",
-            "language": "en",
-            "vad_filter": True,
-        }
-
-        response = requests.post(
-            self.api_url,
-            headers=self.headers,
-            json=payload,
-            timeout=120,
+        self.recognizer = sherpa_onnx.OfflineRecognizer.from_transducer(
+            encoder=str(encoder),
+            decoder=str(decoder),
+            joiner=str(joiner),
+            tokens=str(tokens),
+            num_threads=4,
+            sample_rate=16000,
+            feature_dim=128,
+            decoding_method="greedy_search",
+            model_type="nemo_transducer"
         )
 
-        response.raise_for_status()
+    def transcribe(self, audio_file: str) -> str:
+        import soundfile as sf
 
-        data = response.json()
+        audio, sample_rate = sf.read(
+            audio_file,
+            dtype="float32",
+            always_2d=False,
+        )
 
-        if not data.get("success", False):
-            raise RuntimeError(
-                f"Transcription failed: {data.get('errors')}"
-            )
+        if audio.ndim > 1:
+            audio = audio.mean(axis=1)
 
-        result = data.get("result", {})
-        transcript = result.get("text", "").strip()
+        audio = np.asarray(audio, dtype=np.float32)
 
-        return {
-            "text": transcript,
-            "word_count": result.get("word_count", 0),
-            "words": result.get("words", []),
-            "transcript": transcript
-        }
+        if sample_rate != 16000:
+            raise ValueError(f"Expected 16000 Hz audio, received {sample_rate} Hz.")
 
-# if __name__ == "__main__":
-#     stt_provider = SpeechToTextProvider()
-#     audio_file_path = "recording.wav"  # Replace with your actual audio file path
+        if len(audio) == 0:
+            return ""
 
-#     try:
-#         transcription_result = stt_provider.transcribe(audio_file_path)
-#         print("Transcription Result:")
-#         print(transcription_result)
-#         print("\n\n\n" + transcription_result["transcript"])
-#     except Exception as e:
-#         print(f"Error during transcription: {e}")
+        stream = self.recognizer.create_stream()
+        stream.accept_waveform(sample_rate, audio)
+
+        self.recognizer.decode_stream(stream)
+
+        return stream.result.text.strip()

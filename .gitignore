@@ -1,14 +1,46 @@
-.venv/
-
-.env
-.env.*
-
+# Python cache
 __pycache__/
 *.py[cod]
+*.pyo
 
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# IDE
 .vscode/
+.idea/
 
+# Operating system
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Audio recordings
+*.wav
+*.mp3
+*.flac
+*.ogg
+
+# Model files
+*.onnx
+*.onnx.data
+*.pt
+*.pth
+*.safetensors
+*.bin
+
+# Model and dataset directories
+models/
+voice_dataset/
+
+# Temporary files
 *.log
-
-*.db
-*.sqlite3
+*.tmp
+recording.wav

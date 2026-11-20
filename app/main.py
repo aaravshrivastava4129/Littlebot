@@ -1,9 +1,11 @@
 from app.conversation import Conversation
 from speech.stt_provider import SpeechToTextProvider
 from audio.microphone import Microphone
+from audio.speaker import Speaker
+from config.settings import AUDIO_SAMPLE_RATE, AUDIO_CHANNELS
 
-mic = Microphone(sample_rate=16000, channels=1)
-
+mic = Microphone(sample_rate=AUDIO_SAMPLE_RATE, channels=AUDIO_CHANNELS)
+speaker = Speaker(volume=0.8)
 stt_provider = SpeechToTextProvider()
 audio_file_path = "recording.wav"
 
@@ -19,8 +21,8 @@ def main():
             input()
             mic.stop_recording("recording.wav")
             
-            transcription_result = stt_provider.transcribe(audio_file_path)
-            user_message = transcription_result["transcript"]
+            
+            user_message = stt_provider.transcribe(audio_file_path)
 
             print(f"\nYou: {user_message}\n")
 
